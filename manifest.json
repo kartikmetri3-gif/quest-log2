@@ -1,0 +1,25 @@
+{
+  "name": "Quest Log",
+  "short_name": "Quest Log",
+  "description": "A daily self-improvement tracker with goals, exercise plan, streaks, XP ranks, and an AI coach.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#12141c",
+  "theme_color": "#e8a33d",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

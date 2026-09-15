@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>Quest Log</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#e8a33d">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0a0a0f; --surface:#14151d; --surface-2:#1c1e28; --line:#2a2d3a;
+    --text:#f2f3f7; --text-dim:#8b8f9e;
+    --amber:#f0b429; --amber-glow:rgba(240,180,41,0.35); --green:#6fcf97; --red:#e0645a; --blue:#6f9ce8; --purple:#b088f0;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:radial-gradient(ellipse at top, #16161f 0%, var(--bg) 55%);color:var(--text);font-family:'Space Grotesk',system-ui,sans-serif;min-height:100vh;padding-bottom:86px;-webkit-font-smoothing:antialiased;}
+  .mono{font-family:'IBM Plex Mono',monospace;}
+  header.top{padding:24px 20px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:flex-start;}
+  header.top h1{font-size:20px;font-weight:700;letter-spacing:0.3px;}
+  header.top .date{color:var(--text-dim);font-size:10.5px;margin-top:4px;text-transform:uppercase;letter-spacing:1px;}
+  .xp-total{text-align:right;}
+  .xp-total .num{font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:500;color:var(--amber);}
+  .xp-total .lbl{font-size:9.5px;color:var(--text-dim);letter-spacing:0.5px;}
+  main{padding:16px 15px 8px;max-width:520px;margin:0 auto;}
+  main{max-width:900px;}
+  header.top{max-width:900px;margin:0 auto;}
+  .view{display:none;} .view.active{display:block;}
+  h2.section-title{font-size:11px;color:var(--text-dim);letter-spacing:1.5px;margin:22px 0 10px;font-weight:600;text-transform:uppercase;}
+  h2.section-title:first-child{margin-top:0;}
+
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:16px;margin-bottom:12px;box-shadow:0 4px 16px rgba(0,0,0,0.3);}
+  .field-label{font-size:10.5px;color:var(--text-dim);margin-bottom:5px;letter-spacing:0.3px;}
+  input.plain, textarea.plain{width:100%;background:var(--surface-2);border:1px solid var(--line);border-radius:7px;color:var(--text);font-family:inherit;font-size:13px;padding:9px 10px;}
+  textarea.plain{resize:vertical;min-height:60px;}
+
+  /* Today */
+  .cat-tag{font-size:9px;padding:2px 7px;border-radius:5px;font-weight:600;letter-spacing:0.3px;}
+  .cat-study{background:rgba(111,156,232,0.18);color:var(--blue);}
+  .cat-python{background:rgba(232,163,61,0.18);color:var(--amber);}
+  .cat-exercise{background:rgba(111,207,151,0.18);color:var(--green);}
+  .goal-row{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:12px;box-shadow:0 4px 14px rgba(0,0,0,0.25);transition:border-color .15s;}
+  .goal-row.done{border-color:var(--amber);background:rgba(240,180,41,0.08);box-shadow:0 0 18px var(--amber-glow),0 4px 14px rgba(0,0,0,0.25);}
+  .check{width:26px;height:26px;border-radius:8px;border:2px solid var(--line);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:13px;cursor:pointer;transition:all .15s;}
+  .goal-row.done .check{background:var(--amber);border-color:var(--amber);color:#1a1200;box-shadow:0 0 10px var(--amber-glow);}
+  .goal-mid{flex:1;display:flex;flex-direction:column;gap:3px;}
+  .goal-name-input{background:none;border:none;color:var(--text);font-family:'Space Grotesk';font-size:14px;font-weight:500;padding:1px 0;}
+  .goal-xp{font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--text-dim);}
+  .goal-row.done .goal-xp{color:var(--green);}
+
+  .leave-toggle{margin:12px 0 16px;display:flex;align-items:center;justify-content:space-between;background:var(--surface-2);border:1px dashed var(--line);border-radius:10px;padding:11px 13px;font-size:12px;color:var(--text-dim);}
+  .leave-toggle button{background:none;border:1px solid var(--line);color:var(--text);padding:5px 11px;border-radius:7px;font-family:inherit;font-size:11px;cursor:pointer;}
+  .leave-toggle.active button{border-color:var(--blue);color:var(--blue);}
+  .day-result{text-align:center;padding:18px;border-radius:18px;font-family:'IBM Plex Mono',monospace;border:1px solid var(--line);}
+  .day-result .big{font-size:24px;font-weight:500;}
+  .day-result .small{font-size:10.5px;color:var(--text-dim);margin-top:3px;}
+
+  /* Exercise plan */
+  .day-card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:10px;}
+  .day-card .dhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+  .day-card .dname{font-size:13.5px;font-weight:600;}
+  .rest-pill{display:flex;align-items:center;gap:6px;font-size:10.5px;color:var(--text-dim);cursor:pointer;}
+  .rest-pill input{accent-color:var(--amber);}
+  .ex-slot{display:flex;gap:7px;margin-bottom:6px;}
+  .ex-slot input{flex:1;background:var(--surface-2);border:1px solid var(--line);border-radius:6px;color:var(--text);font-family:inherit;font-size:11.5px;padding:7px 8px;}
+  .ex-slot input.sets{flex:0 0 60px;}
+
+  /* Calendar */
+  .cal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
+  .cal-header button{background:var(--surface);border:1px solid var(--line);color:var(--text);width:28px;height:28px;border-radius:7px;font-size:13px;cursor:pointer;}
+  .cal-header .month-label{font-size:13px;font-weight:600;}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;}
+  .cal-dow{text-align:center;font-size:9.5px;color:var(--text-dim);padding-bottom:3px;}
+  .cal-cell{aspect-ratio:1;border-radius:7px;border:1px solid var(--line);display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:11px;background:var(--surface);}
+  .cal-cell.empty{border:none;background:none;}
+  .cal-cell.today{border-color:var(--blue);}
+  .cal-cell .mark{font-size:12px;margin-top:1px;}
+  .cal-cell.full{background:rgba(111,207,151,0.14);border-color:var(--green);} .cal-cell.full .mark{color:var(--green);}
+  .cal-cell.partial{background:rgba(232,163,61,0.12);border-color:var(--amber);} .cal-cell.partial .mark{color:var(--amber);}
+  .cal-cell.zero{background:rgba(224,100,90,0.12);border-color:var(--red);} .cal-cell.zero .mark{color:var(--red);}
+  .cal-cell.leave{background:rgba(111,156,232,0.12);border-color:var(--blue);} .cal-cell.leave .mark{color:var(--blue);}
+  .legend{display:flex;gap:12px;flex-wrap:wrap;margin-top:14px;font-size:10px;color:var(--text-dim);}
+  .legend span{display:inline-flex;align-items:center;gap:5px;}
+  .legend i{width:9px;height:9px;border-radius:3px;display:inline-block;}
+
+  /* Trend */
+  .chart-wrap{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 8px;}
+  .stat-row{display:flex;gap:10px;margin-top:12px;}
+  .stat-card{flex:1;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:12px 14px;box-shadow:0 4px 14px rgba(0,0,0,0.25);}
+  .stat-card .v{font-family:'IBM Plex Mono';font-size:16px;font-weight:500;}
+  .stat-card .l{font-size:9.5px;color:var(--text-dim);margin-top:2px;}
+
+  /* Profile */
+  .profile-head{display:flex;align-items:center;gap:14px;margin-bottom:16px;}
+  .avatar-ring{width:64px;height:64px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .profile-name-input{background:none;border:none;color:var(--text);font-family:'Space Grotesk';font-size:18px;font-weight:600;padding:2px 0;border-bottom:1px solid var(--line);}
+  .rank-name{font-size:12px;margin-top:3px;font-weight:500;}
+  .stars{display:flex;gap:4px;margin-top:6px;}
+  .star{width:11px;height:11px;}
+  .rank-bar-track{background:var(--surface-2);border-radius:6px;height:8px;overflow:hidden;margin-top:10px;}
+  .rank-bar-fill{height:100%;border-radius:6px;}
+  .rank-progress-text{font-size:10px;color:var(--text-dim);margin-top:5px;font-family:'IBM Plex Mono';}
+  .streak-strip{display:flex;gap:10px;margin-bottom:16px;}
+  .radar-wrap{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;display:flex;justify-content:center;}
+
+  /* Chat */
+  .chat-wrap{display:flex;flex-direction:column;height:calc(100vh - 210px);}
+  .chat-msgs{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding-bottom:10px;}
+  .msg{max-width:82%;padding:9px 12px;border-radius:12px;font-size:13px;line-height:1.4;}
+  .msg.user{align-self:flex-end;background:var(--amber);color:#1a1200;border-bottom-right-radius:3px;}
+  .msg.ai{align-self:flex-start;background:var(--surface);border:1px solid var(--line);border-bottom-left-radius:3px;}
+  .msg.sys{align-self:center;background:none;color:var(--text-dim);font-size:11px;font-style:italic;}
+  .chat-input-row{display:flex;gap:8px;padding-top:8px;border-top:1px solid var(--line);}
+  .chat-input-row input{flex:1;background:var(--surface-2);border:1px solid var(--line);border-radius:20px;color:var(--text);font-family:inherit;font-size:13px;padding:10px 14px;}
+  .chat-input-row button{background:var(--amber);border:none;color:#1a1200;font-weight:600;border-radius:20px;padding:0 18px;font-size:13px;cursor:pointer;}
+  .chat-hint{font-size:10.5px;color:var(--text-dim);margin-bottom:10px;}
+
+  nav.bottom{position:fixed;bottom:0;left:0;right:0;background:var(--surface);border-top:1px solid var(--line);display:flex;padding:8px 4px calc(8px + env(safe-area-inset-bottom));box-shadow:0 -4px 20px rgba(0,0,0,0.35);}
+  nav.bottom button{flex:1;background:none;border:none;color:var(--text-dim);font-family:'Space Grotesk';font-size:9.5px;padding:6px 1px;border-radius:14px;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;transition:background .15s,color .15s;}
+  nav.bottom button .ic{font-size:16px;}
+  nav.bottom button.active{color:var(--amber);background:rgba(240,180,41,0.12);box-shadow:0 0 14px var(--amber-glow) inset;}
+  .progress-ring-wrap{display:flex;align-items:center;gap:16px;background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:16px;margin-bottom:16px;box-shadow:0 4px 18px rgba(0,0,0,0.3);}
+  .progress-ring-label{flex:1;}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div><h1>Quest Log</h1><div class="date" id="todayLabel"></div></div>
+  <div class="xp-total"><div class="num mono" id="totalXp">0</div><div class="lbl">TOTAL XP</div></div>
+</header>
+
+<main>
+
+  <!-- TODAY -->
+  <div class="view active" id="view-today">
+    <div class="progress-ring-wrap">
+      <svg id="progressRing" viewBox="0 0 140 140" width="128" height="128"></svg>
+      <div class="progress-ring-label">
+        <div class="section-title" style="margin:0 0 6px;">TODAY'S PROGRESS</div>
+        <div style="color:var(--text-dim);font-size:11px;">Goals, exercise &amp; streak at a glance</div>
+      </div>
+    </div>
+    <div class="streak-strip">
+      <div class="stat-card"><div class="v" id="streakVal">🔥 0</div><div class="l">DAY STREAK</div></div>
+      <div class="stat-card"><div class="v" id="weekXp">0</div><div class="l">THIS WEEK XP</div></div>
+    </div>
+    <h2 class="section-title">TODAY'S GOALS — TAP NAME TO EDIT</h2>
+    <div id="goalRows"></div>
+    <div class="leave-toggle" id="leaveToggle">
+      <span>Free leave (illness / emergency) — no penalty today</span>
+      <button id="leaveBtn">Mark</button>
+    </div>
+    <div class="day-result" id="dayResult"></div>
+  </div>
+
+  <!-- EXERCISE -->
+  <div class="view" id="view-exercise">
+    <h2 class="section-title">7-DAY EXERCISE PLAN — 4 EXERCISES/DAY</h2>
+    <div id="exerciseDays"></div>
+  </div>
+
+  <!-- CALENDAR -->
+  <div class="view" id="view-calendar">
+    <div class="cal-header">
+      <button id="prevMonth">‹</button>
+      <div class="month-label" id="monthLabel"></div>
+      <button id="nextMonth">›</button>
+    </div>
+    <div class="cal-grid" id="calGrid"></div>
+    <div class="legend">
+      <span><i style="background:var(--green)"></i>3/3 goals</span>
+      <span><i style="background:var(--amber)"></i>1–2 goals</span>
+      <span><i style="background:var(--red)"></i>0 goals</span>
+      <span><i style="background:var(--blue)"></i>free leave</span>
+    </div>
+  </div>
+
+  <!-- TREND -->
+  <div class="view" id="view-trend">
+    <h2 class="section-title">XP BY WEEK — THIS MONTH</h2>
+    <div class="chart-wrap"><svg id="chartSvg" viewBox="0 0 320 190" preserveAspectRatio="xMidYMid meet" style="width:100%;height:220px;display:block;"></svg></div>
+    <div class="stat-row">
+      <div class="stat-card"><div class="v" id="bestWeek">–</div><div class="l">BEST WEEK</div></div>
+      <div class="stat-card"><div class="v" id="monthMax">–</div><div class="l">MAX POSSIBLE (MONTH)</div></div>
+    </div>
+  </div>
+
+  <!-- PROFILE -->
+  <div class="view" id="view-profile">
+    <div class="profile-head">
+      <div class="avatar-ring" id="avatarRing"></div>
+      <div>
+        <input class="profile-name-input" id="profileName" placeholder="Your name">
+        <div class="rank-name" id="rankName">Bronze</div>
+        <div class="stars" id="starsRow"></div>
+      </div>
+    </div>
+    <div class="rank-bar-track"><div class="rank-bar-fill" id="rankBarFill"></div></div>
+    <div class="rank-progress-text" id="rankProgressText"></div>
+
+    <h2 class="section-title">STREAK</h2>
+    <div class="streak-strip">
+      <div class="stat-card"><div class="v" id="profStreak">🔥 0</div><div class="l">CURRENT STREAK</div></div>
+      <div class="stat-card"><div class="v" id="profBestStreak">0</div><div class="l">BEST STREAK</div></div>
+    </div>
+
+    <h2 class="section-title">PROGRESS WEB — THIS MONTH</h2>
+    <div class="radar-wrap"><svg id="radarSvg" viewBox="0 0 240 220" style="width:220px;height:auto;"></svg></div>
+
+    <h2 class="section-title">AI COACH — GROQ API KEY (SAVED ONLY IN THIS BROWSER)</h2>
+    <div class="card">
+      <input type="password" class="plain" id="apiKeyInput" placeholder="Paste your gsk_... key here" />
+    </div>
+
+    <h2 class="section-title">PYTHON ROADMAP</h2>
+    <div class="card"><textarea class="plain" id="py-roadmap" placeholder="Write your Python roadmap / current level..." style="min-height:120px;"></textarea></div>
+  </div>
+
+  <!-- CHAT -->
+  <div class="view" id="view-chat">
+    <div class="chat-hint">Talk to your AI coach — it can mark goals/exercise done or undone for you, or just chat about your progress.</div>
+    <div class="chat-wrap">
+      <div class="chat-msgs" id="chatMsgs"></div>
+      <div class="chat-input-row">
+        <input id="chatInput" placeholder="Type a message..." />
+        <button id="chatSend">Send</button>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<nav class="bottom">
+  <button data-view="today" class="active"><span class="ic">✓</span>Today</button>
+  <button data-view="exercise"><span class="ic">🏋</span>Exercise</button>
+  <button data-view="calendar"><span class="ic">▦</span>Calendar</button>
+  <button data-view="trend"><span class="ic">📈</span>Trend</button>
+  <button data-view="profile"><span class="ic">☺</span>Profile</button>
+  <button data-view="chat"><span class="ic">💬</span>Coach</button>
+</nav>
+
+<script>
+const K_GOALS='goals-config', K_LOG='daily-log', K_EXPLAN='exercise-plan', K_EXLOG='exercise-log', K_ROADMAP='roadmap-config', K_PROFILE='profile-config', K_CHAT='chat-history', K_APIKEY='groq-api-key', K_LASTOPEN='last-open-date';
+
+let goals = [
+  {id:'g1',name:'Goal 1',cat:'study'},
+  {id:'g2',name:'Goal 2',cat:'study'},
+  {id:'g3',name:'Goal 3',cat:'python'}
+];
+let log = {}; // main 3 goals + leave
+let exLog = {}; // exercise done per date: {date: true/false}
+let exPlan = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'].map(d=>({
+  day:d, rest:false, exercises:[{name:'',sets:''},{name:'',sets:''},{name:'',sets:''},{name:'',sets:''}]
+}));
+let roadmap = {py:''};
+let profile = {name:'', bestStreak:0};
+let chatHistory = [];
+let apiKey = '';
+
+function todayKey(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function keyFor(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function fmtDate(d){return d.toLocaleDateString('en-US',{weekday:'long', month:'long', day:'numeric'});}
+
+async function loadAll(){
+  try{const v=localStorage.getItem(K_GOALS); if(v) goals=JSON.parse(v);}catch(e){}
+  try{const v=localStorage.getItem(K_LOG); if(v) log=JSON.parse(v);}catch(e){}
+  try{const v=localStorage.getItem(K_EXPLAN); if(v) exPlan=JSON.parse(v);}catch(e){}
+  try{const v=localStorage.getItem(K_EXLOG); if(v) exLog=JSON.parse(v);}catch(e){}
+  try{const v=localStorage.getItem(K_ROADMAP); if(v) roadmap=JSON.parse(v);}catch(e){}
+  try{const v=localStorage.getItem(K_PROFILE); if(v) profile=JSON.parse(v);}catch(e){}
+  try{const v=localStorage.getItem(K_CHAT); if(v) chatHistory=JSON.parse(v);}catch(e){}
+  try{const v=localStorage.getItem(K_APIKEY); if(v) apiKey=v;}catch(e){}
+  await handleDayRollover();
+  render();
+  renderChat();
+}
+async function handleDayRollover(){
+  const todayStr = todayKey();
+  let lastOpen = null;
+  try{ lastOpen = localStorage.getItem(K_LASTOPEN); }catch(e){}
+
+  if(lastOpen && lastOpen !== todayStr){
+    // backfill every missed day between lastOpen and today (not including today itself)
+    let d = new Date(lastOpen+'T00:00:00');
+    d.setDate(d.getDate()+1);
+    const todayDate = new Date(todayStr+'T00:00:00');
+    while(d < todayDate){
+      const k = keyFor(d);
+      if(!log[k]){
+        log[k] = {g1:false, g2:false, g3:false, leave:false};
+      }
+      d.setDate(d.getDate()+1);
+    }
+    await saveLog();
+
+    // reset goal names back to defaults for the new day
+    goals.forEach((g,i)=>{ g.name = 'Goal '+(i+1); });
+    await saveGoals();
+  }
+
+  try{ localStorage.setItem(K_LASTOPEN, todayStr); }catch(e){}
+}
+async function saveGoals(){try{localStorage.setItem(K_GOALS,JSON.stringify(goals));}catch(e){}}
+async function saveLog(){try{localStorage.setItem(K_LOG,JSON.stringify(log));}catch(e){}}
+async function saveExPlan(){try{localStorage.setItem(K_EXPLAN,JSON.stringify(exPlan));}catch(e){}}
+async function saveExLog(){try{localStorage.setItem(K_EXLOG,JSON.stringify(exLog));}catch(e){}}
+async function saveRoadmap(){try{localStorage.setItem(K_ROADMAP,JSON.stringify(roadmap));}catch(e){}}
+async function saveProfile(){try{localStorage.setItem(K_PROFILE,JSON.stringify(profile));}catch(e){}}
+async function saveChat(){try{localStorage.setItem(K_CHAT,JSON.stringify(chatHistory.slice(-40)));}catch(e){}}
+
+function getDay(key){if(!log[key]) log[key]={g1:false,g2:false,g3:false,leave:false}; return log[key];}
+function dayXp(entry){if(!entry) return 0; if(entry.leave) return 0; const n=['g1','g2','g3'].filter(g=>entry[g]).length; if(n===3)return 100; if(n===2)return 56; if(n===1)return 13; return -30;}
+function exBonus(key){ return exLog[key] ? 25 : 0; }
+function totalXp(){
+  let s = Object.values(log).reduce((s,e)=>s+dayXp(e),0);
+  s += Object.values(exLog).filter(Boolean).length*25;
+  return s;
+}
+
+function dayQualifies(e){ if(!e) return false; return e.leave || ['g1','g2','g3'].filter(g=>e[g]).length===3; }
+
+function computeStreak(){
+  let d=new Date();
+  let key=keyFor(d);
+  if(!dayQualifies(log[key])){
+    d.setDate(d.getDate()-1);  // today not finished yet — start checking from yesterday instead
+  }
+  let streak=0;
+  while(true){
+    key=keyFor(d); const e=log[key];
+    if(!e) break;
+    if(dayQualifies(e)){
+      streak++; d.setDate(d.getDate()-1); continue;
+    }
+    // this day failed — check the day before it
+    const d2=new Date(d); d2.setDate(d.getDate()-1);
+    const e2=log[keyFor(d2)];
+    const prevAlsoFails = !dayQualifies(e2); // missing data counts as a fail too
+    if(prevAlsoFails){
+      break; // 2+ fails in a row — streak ends here
+    } else {
+      d.setDate(d.getDate()-1); // isolated single miss — skip just this day, keep checking further back
+      continue;
+    }
+  }
+  return streak;
+}
+function computeBestStreak(){
+  const keys = Object.keys(log).sort();
+  if(keys.length===0) return 0;
+  let best=0, current=0, failRun=0;
+  keys.forEach(k=>{
+    const e=log[k];
+    if(dayQualifies(e)){
+      current++; failRun=0;
+      best=Math.max(best,current);
+    } else {
+      failRun++;
+      if(failRun>=2){ current=0; failRun=0; }
+    }
+  });
+  return best;
+}
+function weekXpNow(){
+  const now=new Date(); const sun=new Date(now); sun.setDate(now.getDate()-now.getDay());
+  let sum=0;
+  for(let i=0;i<7;i++){ const d=new Date(sun); d.setDate(sun.getDate()+i); const k=keyFor(d); if(log[k]) sum+=dayXp(log[k]); sum+=exBonus(k); }
+  return sum;
+}
+
+function render(){
+  document.getElementById('todayLabel').textContent = fmtDate(new Date());
+  document.getElementById('totalXp').textContent = totalXp();
+  document.getElementById('streakVal').textContent = '🔥 ' + computeStreak();
+  document.getElementById('weekXp').textContent = weekXpNow();
+  renderToday();
+  renderExercisePlan();
+  renderCalendar();
+  renderTrend();
+  renderProfile();
+}
+
+const CAT_LABEL = {study:'STUDY', python:'PYTHON'};
+function renderProgressRing(entry, exDone){
+  const svg = document.getElementById('progressRing');
+  if(!svg) return;
+  const goalsDone = ['g1','g2','g3'].filter(g=>entry[g]).length;
+  const totalTasks = 4; // 3 goals + exercise
+  const doneTasks = goalsDone + (exDone?1:0);
+  const pct = entry.leave ? 100 : Math.round((doneTasks/totalTasks)*100);
+  const r = 58, cx=70, cy=70;
+  const circumference = 2*Math.PI*r;
+  const offset = circumference * (1 - pct/100);
+  const color = pct===100 ? '#f0b429' : (pct>=50 ? '#f0b429' : '#8b8f9e');
+  svg.innerHTML = `
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#1c1e28" stroke-width="10"/>
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${color}" stroke-width="10"
+      stroke-linecap="round" stroke-dasharray="${circumference}" stroke-dashoffset="${offset}"
+      transform="rotate(-90 ${cx} ${cy})" style="filter:drop-shadow(0 0 6px rgba(240,180,41,0.5));transition:stroke-dashoffset .4s;"/>
+    <text x="${cx}" y="${cy-4}" text-anchor="middle" fill="#f2f3f7" font-size="24" font-weight="700" font-family="'IBM Plex Mono',monospace">${pct}%</text>
+    <text x="${cx}" y="${cy+16}" text-anchor="middle" fill="#8b8f9e" font-size="9" letter-spacing="1">COMPLETE</text>
+  `;
+}
+
+function renderToday(){
+  const key = todayKey();
+  const entry = getDay(key);
+  const rows = document.getElementById('goalRows');
+  rows.innerHTML='';
+  goals.forEach((g,i)=>{
+    const gid='g'+(i+1);
+    const done=!!entry[gid];
+    const row=document.createElement('div');
+    row.className='goal-row'+(done?' done':'');
+    const chk=document.createElement('div'); chk.className='check'; chk.textContent=done?'✓':'';
+    chk.onclick=async()=>{ if(entry.leave) return; entry[gid]=!entry[gid]; await saveLog(); render(); };
+    const mid=document.createElement('div'); mid.className='goal-mid';
+    const tag=document.createElement('span'); tag.className='cat-tag cat-'+g.cat; tag.textContent=CAT_LABEL[g.cat];
+    const inp=document.createElement('input'); inp.className='goal-name-input'; inp.value=g.name; inp.placeholder='Goal '+(i+1);
+    inp.onclick=(e)=>e.stopPropagation();
+    inp.onchange=async(e)=>{ g.name=e.target.value; await saveGoals(); };
+    mid.appendChild(tag); mid.appendChild(inp);
+    const xp=document.createElement('div'); xp.className='goal-xp'; xp.textContent='33xp';
+    row.appendChild(chk); row.appendChild(mid); row.appendChild(xp);
+    rows.appendChild(row);
+  });
+  // exercise as 4th row
+  const exDone = !!exLog[key];
+  renderProgressRing(entry, exDone);
+  const exRow = document.createElement('div');
+  exRow.className='goal-row'+(exDone?' done':'');
+  exRow.innerHTML = `<div class="check">${exDone?'✓':''}</div><div class="goal-mid"><span class="cat-tag cat-exercise">EXERCISE</span><div class="goal-name-input" style="padding-top:2px;">Today's workout</div></div><div class="goal-xp">+25xp</div>`;
+  exRow.onclick = async()=>{ exLog[key] = !exLog[key]; await saveExLog(); render(); };
+  rows.appendChild(exRow);
+
+  const leaveBox=document.getElementById('leaveToggle');
+  leaveBox.classList.toggle('active', !!entry.leave);
+  document.getElementById('leaveBtn').textContent = entry.leave?'Unmark':'Mark';
+  document.getElementById('leaveBtn').onclick=async()=>{ entry.leave=!entry.leave; await saveLog(); render(); };
+  const result=document.getElementById('dayResult');
+  const xpv=dayXp(entry) + (exDone?25:0);
+  result.style.background = entry.leave?'rgba(111,156,232,0.1)':(xpv>0?'rgba(111,207,151,0.1)':'rgba(224,100,90,0.08)');
+  result.innerHTML = entry.leave
+    ? `<div class="big" style="color:var(--blue)">Free leave</div><div class="small">no penalty today</div>`
+    : `<div class="big" style="color:${xpv>0?'var(--green)':'var(--red)'}">${xpv>0?'+':''}${xpv} XP</div><div class="small">${['g1','g2','g3'].filter(g=>entry[g]).length} of 3 goals + ${exDone?'exercise':'no exercise'}</div>`;
+}
+
+function renderExercisePlan(){
+  const wrap = document.getElementById('exerciseDays');
+  wrap.innerHTML='';
+  exPlan.forEach((d,di)=>{
+    const card=document.createElement('div'); card.className='day-card';
+    const head=document.createElement('div'); head.className='dhead';
+    head.innerHTML = `<div class="dname">${d.day}</div><label class="rest-pill"><input type="checkbox" ${d.rest?'checked':''}> Rest day</label>`;
+    head.querySelector('input').onchange = async(e)=>{ d.rest=e.target.checked; await saveExPlan(); renderExercisePlan(); };
+    card.appendChild(head);
+    if(!d.rest){
+      d.exercises.forEach((ex,ei)=>{
+        const slot=document.createElement('div'); slot.className='ex-slot';
+        slot.innerHTML = `<input placeholder="Exercise ${ei+1}" value="${ex.name}"><input class="sets" placeholder="Sets" value="${ex.sets}">`;
+        const [nameInp,setsInp] = slot.querySelectorAll('input');
+        nameInp.onchange=async(e)=>{ ex.name=e.target.value; await saveExPlan(); };
+        setsInp.onchange=async(e)=>{ ex.sets=e.target.value; await saveExPlan(); };
+        card.appendChild(slot);
+      });
+    }
+    wrap.appendChild(card);
+  });
+}
+
+let calDate=new Date();
+function renderCalendar(){
+  const y=calDate.getFullYear(), m=calDate.getMonth();
+  document.getElementById('monthLabel').textContent=calDate.toLocaleDateString('en-US',{month:'long',year:'numeric'});
+  const grid=document.getElementById('calGrid'); grid.innerHTML='';
+  ['S','M','T','W','T','F','S'].forEach(d=>{const el=document.createElement('div');el.className='cal-dow';el.textContent=d;grid.appendChild(el);});
+  const firstDow=new Date(y,m,1).getDay(); const daysInMonth=new Date(y,m+1,0).getDate();
+  for(let i=0;i<firstDow;i++){const el=document.createElement('div');el.className='cal-cell empty';grid.appendChild(el);}
+  const tKey=todayKey();
+  for(let day=1;day<=daysInMonth;day++){
+    const key=y+'-'+String(m+1).padStart(2,'0')+'-'+String(day).padStart(2,'0');
+    const entry=log[key];
+    const cell=document.createElement('div'); cell.className='cal-cell';
+    if(key===tKey) cell.classList.add('today');
+    let mark='';
+    if(entry){
+      if(entry.leave){cell.classList.add('leave'); mark='●';}
+      else{
+        const n=['g1','g2','g3'].filter(g=>entry[g]).length;
+        if(n===3){cell.classList.add('full'); mark='✕';}
+        else if(n>0){cell.classList.add('partial'); mark='✕';}
+        else{cell.classList.add('zero'); mark='✕';}
+      }
+    }
+    cell.innerHTML=`<div>${day}</div><div class="mark">${mark}</div>`;
+    grid.appendChild(cell);
+  }
+}
+
+function weekIndexOfDay(day, firstDow){ return Math.floor((day - 1 + firstDow) / 7) + 1; }
+
+function renderTrend(){
+  const now=new Date();
+  const y=now.getFullYear(), m=now.getMonth();
+  const daysInMonth=new Date(y,m+1,0).getDate();
+  const firstDow=new Date(y,m,1).getDay();
+  const numWeeks = weekIndexOfDay(daysInMonth, firstDow);
+  const currentWeekIndex = weekIndexOfDay(now.getDate(), firstDow) - 1; // 0-indexed week we're actually in right now
+  const weekTotals = Array(numWeeks).fill(0);
+  for(let day=1; day<=daysInMonth; day++){
+    const d=new Date(y,m,day);
+    if(d>now) continue;
+    const key=keyFor(d);
+    const wi = weekIndexOfDay(day, firstDow)-1;
+    weekTotals[wi] += (log[key]?dayXp(log[key]):0) + exBonus(key);
+  }
+  const monthMax = daysInMonth*100;
+  document.getElementById('monthMax').textContent = monthMax;
+  document.getElementById('bestWeek').textContent = weekTotals.length ? Math.max(...weekTotals.slice(0,currentWeekIndex+1)) : '–';
+
+  const svg=document.getElementById('chartSvg'); svg.innerHTML='';
+  const padL=42, padR=14, padT=16, padB=26;
+  const w=320-padL-padR, h=190-padT-padB;
+  const minV=0, maxV=monthMax;
+  const yOf=v=> padT + h - ((Math.max(v,0)-minV)/(maxV-minV))*h;
+
+  // horizontal gridlines with value labels (like a real reference chart)
+  const gridSteps = 4;
+  for(let i=0; i<=gridSteps; i++){
+    const val = Math.round((maxV/gridSteps)*i);
+    const gy = yOf(val);
+    svg.innerHTML += `<line x1="${padL}" y1="${gy}" x2="${320-padR}" y2="${gy}" stroke="#232738" stroke-width="1"/>`;
+    svg.innerHTML += `<text x="${padL-8}" y="${gy+3}" fill="#6b7086" font-size="8" text-anchor="end">${val}</text>`;
+  }
+
+  const xStep = w/numWeeks;
+  const activeWeeks = weekTotals.slice(0, currentWeekIndex+1); // only weeks up to today — don't plot future empty weeks
+  const points = activeWeeks.map((val,i)=>{
+    const x = padL + xStep*(i+0.5);
+    const y = yOf(val);
+    return {x, y, val};
+  });
+
+  // straight line segments connecting each week's point (clean, direct — matches reference style)
+  const pathD = points.map((p,i)=> (i===0?'M':'L') + p.x + ' ' + p.y).join(' ');
+  svg.innerHTML += `<path d="${pathD}" fill="none" stroke="#e8a33d" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>`;
+
+  // solid filled dot at every point
+  points.forEach((p,i)=>{
+    svg.innerHTML += `<circle cx="${p.x}" cy="${p.y}" r="5" fill="#e8a33d"/>`;
+    svg.innerHTML += `<text x="${p.x}" y="${p.y-11}" fill="#eceef5" font-size="9" font-weight="bold" text-anchor="middle">${p.val}</text>`;
+  });
+
+  // faint tick marks for the remaining (not-yet-happened) weeks, so the x-axis still shows the full month
+  for(let i=currentWeekIndex+1; i<numWeeks; i++){
+    const x = padL + xStep*(i+0.5);
+    svg.innerHTML += `<text x="${x}" y="${190-8}" fill="#4a4e5c" font-size="9" text-anchor="middle">W${i+1}</text>`;
+  }
+  points.forEach((p,i)=>{
+    svg.innerHTML += `<text x="${p.x}" y="${190-8}" fill="#8b90a8" font-size="9" text-anchor="middle">W${i+1}</text>`;
+  });
+}
+
+const RANK_ORDER = ['Bronze','Silver','Gold','Platinum','Diamond','Heroic','Master'];
+const RANK_COLOR = {Bronze:'#cd7f32',Silver:'#b9c2cf',Gold:'#e8c14d',Platinum:'#7fd8c8',Diamond:'#6fc3f0',Heroic:'#b088f0',Master:'#e0645a'};
+const RANK_START = {Bronze:0,Silver:2500,Gold:5000,Platinum:7500,Diamond:11000,Heroic:14500,Master:19000};
+const RANK_STARS = {Bronze:3,Silver:3,Gold:3,Platinum:4,Diamond:4,Heroic:5,Master:5};
+const RANK_TIER_XP = {Bronze:2500,Silver:2500,Gold:2500,Platinum:3500,Diamond:3500,Heroic:4500,Master:4500};
+
+function rankBadgeSVG(rank, size){
+  const c = RANK_COLOR[rank];
+  return `<svg width="${size}" height="${size}" viewBox="0 0 40 40">
+    <polygon points="20,2 35,10 35,24 20,38 5,24 5,10" fill="${c}" fill-opacity="0.18" stroke="${c}" stroke-width="2"/>
+    <polygon points="20,10 28,15 28,23 20,30 12,23 12,15" fill="${c}"/>
+  </svg>`;
+}
+function starSVG(filled){
+  const c = filled ? 'var(--amber)' : 'var(--line)';
+  return `<svg class="star" viewBox="0 0 24 24" fill="${filled?'#e8a33d':'none'}" stroke="${c}" stroke-width="1.5"><polygon points="12,2 15,9 22,9 16.5,13.5 18.5,21 12,17 5.5,21 7.5,13.5 2,9 9,9"/></svg>`;
+}
+function getRankInfo(xp){
+  const clamped = Math.max(0, xp);
+  let rank = 'Bronze';
+  for(const r of RANK_ORDER){ if(clamped >= RANK_START[r]) rank = r; }
+  const isMax = rank==='Master';
+  const start = RANK_START[rank], tierXp = RANK_TIER_XP[rank];
+  const into = clamped - start;
+  const totalStars = RANK_STARS[rank];
+  const starXp = tierXp/totalStars;
+  const starsEarned = isMax ? totalStars : Math.min(totalStars, Math.floor(into/starXp));
+  const pct = isMax ? 100 : Math.min(100, (into/tierXp)*100);
+  const nextRank = RANK_ORDER[RANK_ORDER.indexOf(rank)+1];
+  return {rank, starsEarned, totalStars, pct, into: Math.round(into), tierXp, nextRank, isMax};
+}
+
+function renderProfile(){
+  document.getElementById('profileName').value = profile.name;
+  document.getElementById('profileName').onchange = async(e)=>{ profile.name=e.target.value; await saveProfile(); };
+  document.getElementById('py-roadmap').value = roadmap.py;
+  document.getElementById('py-roadmap').onchange = async(e)=>{ roadmap.py=e.target.value; await saveRoadmap(); };
+
+  const apInp = document.getElementById('apiKeyInput');
+  if(document.activeElement !== apInp) apInp.value = apiKey;
+  apInp.onchange = (e)=>{ apiKey = e.target.value.trim(); localStorage.setItem(K_APIKEY, apiKey); };
+
+  const xp = totalXp();
+  const info = getRankInfo(xp);
+  document.getElementById('avatarRing').innerHTML = rankBadgeSVG(info.rank, 56);
+  document.getElementById('rankName').textContent = info.rank;
+  document.getElementById('rankName').style.color = RANK_COLOR[info.rank];
+  const starsRow = document.getElementById('starsRow'); starsRow.innerHTML='';
+  for(let i=0;i<info.totalStars;i++){ starsRow.innerHTML += starSVG(i<info.starsEarned); }
+  document.getElementById('rankBarFill').style.width = info.pct+'%';
+  document.getElementById('rankBarFill').style.background = RANK_COLOR[info.rank];
+  document.getElementById('rankProgressText').textContent = info.isMax
+    ? `Max rank reached — ${xp} total XP`
+    : `${info.into} / ${info.tierXp} XP toward ${info.nextRank}`;
+
+  const streak = computeStreak();
+  const bestStreak = Math.max(profile.bestStreak||0, computeBestStreak());
+  if(bestStreak !== profile.bestStreak){ profile.bestStreak = bestStreak; saveProfile(); }
+  document.getElementById('profStreak').textContent = '🔥 ' + streak;
+  document.getElementById('profBestStreak').textContent = bestStreak;
+
+  renderRadar();
+}
+
+function renderRadar(){
+  const now=new Date();
+  const monthPrefix = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
+  const monthKeys = Object.keys(log).filter(k=>k.startsWith(monthPrefix));
+  const totalDays = monthKeys.length || 1;
+  const studyRate = monthKeys.reduce((s,k)=>{const e=log[k]; return s + (e.g1?1:0) + (e.g2?1:0);},0) / (totalDays*2);
+  const pyRate = monthKeys.reduce((s,k)=>{const e=log[k]; return s + (e.g3?1:0);},0) / totalDays;
+  const exKeysThisMonth = Object.keys(exLog).filter(k=>k.startsWith(monthPrefix) && exLog[k]);
+  const exRate = exKeysThisMonth.length / totalDays;
+
+  const studyScore = Math.round(Math.min(1,studyRate)*100);
+  const pyScore = Math.round(Math.min(1,pyRate)*100);
+  const exScore = Math.round(Math.min(1,exRate)*100);
+
+  const svg = document.getElementById('radarSvg'); svg.innerHTML='';
+  const cx=120, cy=110, R=80;
+  const axes = [{label:'Study', v:studyScore},{label:'Python', v:pyScore},{label:'Exercise', v:exScore}];
+  const angleFor = i => -Math.PI/2 + i*(2*Math.PI/3);
+  [0.33,0.66,1].forEach(f=>{
+    let pts='';
+    for(let i=0;i<3;i++){ const a=angleFor(i); pts += (cx+Math.cos(a)*R*f)+','+(cy+Math.sin(a)*R*f)+' '; }
+    svg.innerHTML += `<polygon points="${pts}" fill="none" stroke="#2c3044" stroke-width="1"/>`;
+  });
+  axes.forEach((ax,i)=>{
+    const a=angleFor(i);
+    const x2=cx+Math.cos(a)*R, y2=cy+Math.sin(a)*R;
+    svg.innerHTML += `<line x1="${cx}" y1="${cy}" x2="${x2}" y2="${y2}" stroke="#2c3044" stroke-width="1"/>`;
+    const lx=cx+Math.cos(a)*(R+22), ly=cy+Math.sin(a)*(R+22);
+    svg.innerHTML += `<text x="${lx}" y="${ly}" fill="#8b90a8" font-size="10.5" text-anchor="middle">${ax.label}</text>`;
+    svg.innerHTML += `<text x="${lx}" y="${ly+12}" fill="#e8a33d" font-size="9.5" text-anchor="middle" font-family="IBM Plex Mono">${ax.v}%</text>`;
+  });
+  let dpts='';
+  axes.forEach((ax,i)=>{ const a=angleFor(i); const r=R*(ax.v/100); dpts += (cx+Math.cos(a)*r)+','+(cy+Math.sin(a)*r)+' '; });
+  svg.innerHTML += `<polygon points="${dpts}" fill="#e8a33d" fill-opacity="0.28" stroke="#e8a33d" stroke-width="2"/>`;
+  axes.forEach((ax,i)=>{ const a=angleFor(i); const r=R*(ax.v/100); svg.innerHTML += `<circle cx="${cx+Math.cos(a)*r}" cy="${cy+Math.sin(a)*r}" r="3" fill="#e8a33d"/>`; });
+}
+
+document.getElementById('prevMonth').onclick=()=>{calDate.setMonth(calDate.getMonth()-1); renderCalendar();};
+document.getElementById('nextMonth').onclick=()=>{calDate.setMonth(calDate.getMonth()+1); renderCalendar();};
+
+document.querySelectorAll('nav.bottom button').forEach(btn=>{
+  btn.onclick=()=>{
+    document.querySelectorAll('nav.bottom button').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+    document.getElementById('view-'+btn.dataset.view).classList.add('active');
+    if(btn.dataset.view === 'trend'){ renderTrend(); } // re-render now that the tab is actually visible
+  };
+});
+
+/* ---------- AI COACH CHAT ---------- */
+function renderChat(){
+  const wrap = document.getElementById('chatMsgs');
+  wrap.innerHTML = '';
+  if(chatHistory.length===0){
+    wrap.innerHTML = `<div class="msg sys">Say hi, or try "mark my python goal done today" / "how's my week going?"</div>`;
+  }
+  chatHistory.forEach(m=>{
+    const el = document.createElement('div');
+    el.className = 'msg ' + (m.role==='user' ? 'user' : 'ai');
+    el.textContent = m.display || m.content;
+    wrap.appendChild(el);
+  });
+  wrap.scrollTop = wrap.scrollHeight;
+}
+
+function buildStateSummary(){
+  const key = todayKey();
+  const entry = getDay(key);
+  return {
+    today: key,
+    goals: goals.map((g,i)=>({slot:i+1, name:g.name, category:g.cat, done: !!entry['g'+(i+1)]})),
+    exerciseDoneToday: !!exLog[key],
+    totalXp: totalXp(),
+    currentStreak: computeStreak(),
+    freeLeaveToday: !!entry.leave
+  };
+}
+
+function applyActions(actions){
+  if(!Array.isArray(actions)) return;
+  const key = todayKey();
+  const entry = getDay(key);
+  actions.forEach(a=>{
+    if(!a || !a.type) return;
+    if(a.type==='toggle_goal' && [1,2,3].includes(a.goal)){
+      if(!entry.leave) entry['g'+a.goal] = !!a.done;
+    } else if(a.type==='toggle_exercise'){
+      exLog[key] = !!a.done;
+    } else if(a.type==='toggle_leave'){
+      entry.leave = !!a.done;
+    }
+  });
+  saveLog(); saveExLog();
+  render();
+}
+
+async function sendChat(){
+  const input = document.getElementById('chatInput');
+  const text = input.value.trim();
+  if(!text) return;
+  input.value='';
+  chatHistory.push({role:'user', content:text});
+  renderChat();
+  await saveChat();
+
+  const sysPrompt = `You are a supportive, honest personal coach embedded inside a teenage student's self-improvement app. The student's name may be provided in state. Current app state (JSON): ${JSON.stringify(buildStateSummary())}.
+You can update the app by including an "actions" array in your JSON response. Allowed action types:
+- {"type":"toggle_goal","goal":1|2|3,"done":true|false}
+- {"type":"toggle_exercise","done":true|false}
+- {"type":"toggle_leave","done":true|false}
+Only include actions the user clearly asked for. Respond ONLY with valid JSON, no markdown, no backticks, in this exact shape:
+{"reply": "short, warm, honest message to show the student", "actions": []}
+Keep replies under 60 words. Be encouraging but honest — don't just praise everything.`;
+
+  const msgs = chatHistory.slice(-10).map(m=>({role:m.role, content:m.content}));
+
+  let aiText = "Sorry, I couldn't reach the coach right now.";
+  let actions = [];
+  if(!apiKey){
+    chatHistory.push({role:'assistant', content:'{}', display:"I need your Groq API key first — go to the Profile tab and paste it into the AI Coach box, then come back and try again."});
+    renderChat(); await saveChat();
+    return;
+  }
+  try{
+    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: "openai/gpt-oss-120b",
+        messages: [{role:"system", content: sysPrompt}, ...msgs],
+        temperature: 0.7
+      })
+    });
+    if(!response.ok){
+      const errBody = await response.text();
+      throw new Error(`HTTP ${response.status}: ${errBody.slice(0,200)}`);
+    }
+    const data = await response.json();
+    const raw = data.choices?.[0]?.message?.content || '';
+    const clean = raw.replace(/```json|```/g,'').trim();
+    const parsed = JSON.parse(clean);
+    aiText = parsed.reply || aiText;
+    actions = parsed.actions || [];
+  }catch(e){
+    aiText = "Error: " + e.message;
+  }
+
+  chatHistory.push({role:'assistant', content: JSON.stringify({reply:aiText}), display: aiText});
+  renderChat();
+  await saveChat();
+  if(actions.length) applyActions(actions);
+}
+document.getElementById('chatSend').onclick = sendChat;
+document.getElementById('chatInput').addEventListener('keydown', e=>{ if(e.key==='Enter') sendChat(); });
+
+loadAll();
+</script>
+</body>
+</html>
