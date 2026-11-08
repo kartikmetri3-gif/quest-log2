@@ -76,6 +76,8 @@
   .cal-dow{text-align:center;font-size:9.5px;color:var(--text-dim);padding-bottom:3px;}
   .cal-cell{aspect-ratio:1;border-radius:7px;border:1px solid var(--line);display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:11px;background:var(--surface);}
   .cal-cell.empty{border:none;background:none;}
+  .rest-box{position:absolute;top:4px;right:4px;width:10px;height:10px;border:1px solid var(--blue);border-radius:3px;cursor:pointer;background:transparent;z-index:10;}
+  .rest-box.active{background:var(--blue);}
   .cal-cell.today{border-color:var(--blue);}
   .cal-cell .mark{font-size:12px;margin-top:1px;}
   .cal-cell.full{background:rgba(111,207,151,0.14);border-color:var(--green);} .cal-cell.full .mark{color:var(--green);}
@@ -729,7 +731,47 @@ function renderRadar(){
   svg.innerHTML += `<polygon points="${dpts}" fill="#e8a33d" fill-opacity="0.28" stroke="#e8a33d" stroke-width="2"/>`;
   axes.forEach((ax,i)=>{ const a=angleFor(i); const r=R*(ax.v/100); svg.innerHTML += `<circle cx="${cx+Math.cos(a)*r}" cy="${cy+Math.sin(a)*r}" r="3" fill="#e8a33d"/>`; });
 }
+/* --- NEW REST BOX FEATURE --- */
+function injectRestBoxes() {
+  const grid = document.getElementById('calGrid');
+  if(!grid) return;
+  const dayCells = Array.from(grid.querySelectorAll('.cal-cell:not(.empty)'));
+  
+  dayCells.forEach(cell => {
+    const dayNum = parseInt(cell.firstChild.textContent);
+    if(isNaN(dayNum)) return;
+    
+    const y = calDate.getFullYear();
+    const m = calDate.getMonth();
+    const key = y+'-'+String(m+1).padStart(2,'0')+'-'+String(dayNum).padStart(2,'0');
+    
+    // Remove old box if it exists
+    const oldBox = cell.querySelector('.rest-box');
+    if(oldBox) oldBox.remove();
 
+    const entry = log[key];
+    const restBox = document.createElement('div');
+    restBox.className = 'rest-box' + (entry && entry.leave ? ' active' : '');
+    restBox.title = "Toggle Rest Day / Free Leave";
+    
+    restBox.onclick = async (e) => {
+        e.stopPropagation();
+        if(!log[key]) log[key] = {g1:false, g2:false, g3:false, leave:false};
+        log[key].leave = !log[key].leave;
+        if(log[key].leave) { log[key].g1 = false; log[key].g2 = false; log[key].g3 = false; }
+        await saveLog();
+        render(); 
+    };
+    
+    cell.style.position = 'relative'; 
+    cell.appendChild(restBox);
+  });
+}
+
+const calGridElement = document.getElementById('calGrid');
+const observer = new MutationObserver(() => injectRestBoxes());
+observer.observe(calGridElement, { childList: true });
+/* --- END NEW FEATURE --- */
 document.getElementById('prevMonth').onclick=()=>{calDate.setMonth(calDate.getMonth()-1); renderCalendar();};
 document.getElementById('nextMonth').onclick=()=>{calDate.setMonth(calDate.getMonth()+1); renderCalendar();};
 
