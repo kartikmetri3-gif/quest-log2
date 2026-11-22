@@ -9,6 +9,7 @@
 <link rel="icon" type="image/png" href="icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  
 <style>
   :root{
     --bg:#0a0a0f; --surface:#14151d; --surface-2:#1c1e28; --line:#2a2d3a;
@@ -126,6 +127,22 @@
   nav.bottom button.active{color:var(--amber);background:rgba(240,180,41,0.12);box-shadow:0 0 14px var(--amber-glow) inset;}
   .progress-ring-wrap{display:flex;align-items:center;gap:16px;background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:16px;margin-bottom:16px;box-shadow:0 4px 18px rgba(0,0,0,0.3);}
   .progress-ring-label{flex:1;}
+
+/* Wheel Styles */
+.wheel-container { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 20px; }
+.wheel-display { width: 220px; height: 220px; border-radius: 50%; border: 8px solid var(--surface); box-shadow: 0 0 30px rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; font-size: 42px; font-weight: bold; font-family: 'IBM Plex Mono', monospace; color: #1a1200; transition: all 0.3s ease; background: var(--line); }
+.spin-btn { margin-top: 30px; background: var(--amber); color: #1a1200; border: none; padding: 15px 40px; border-radius: 30px; font-size: 16px; font-weight: bold; font-family: 'Space Grotesk'; cursor: pointer; box-shadow: 0 4px 15px var(--amber-glow); transition: transform 0.1s; }
+.spin-btn:active { transform: scale(0.95); }
+.spin-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.timer-display { margin-top: 20px; font-size: 32px; font-family: 'IBM Plex Mono', monospace; color: var(--text); display: none; }
+
+/* Wheel Colors */
+.w-2 { background: #6f9ce8; } /* Blue */
+.w-3 { background: #6fcf97; } /* Green */
+.w-4 { background: #f0b429; } /* Yellow */
+.w-5 { background: #f28c28; } /* Orange */
+.w-7 { background: #f07c9e; } /* Pink */
+.w-10 { background: #b088f0; } /* Purple */
 </style>
 </head>
 <body>
@@ -158,6 +175,15 @@
     </div>
     <div class="day-result" id="dayResult"></div>
   </div>
+
+      <!-- BREAK WHEEL -->
+<div class="view" id="view-wheel">
+  <div class="wheel-container">
+    <div class="wheel-display" id="wheelDisplay">SPIN</div>
+    <button class="spin-btn" id="spinBtn" onclick="spinWheel()">SPIN FOR BREAK</button>
+    <div class="timer-display" id="timerDisplay">00:00</div>
+  </div>
+</div>
 
   <!-- CALENDAR -->
   <div class="view" id="view-calendar">
@@ -232,6 +258,7 @@
 
 <nav class="bottom">
   <button data-view="today" class="active"><span class="ic">✓</span>Today</button>
+  <button data-view="wheel"><span class="ic">🎡</span>Break</button>
   <button data-view="calendar"><span class="ic">▦</span>Calendar</button>
   <button data-view="trend"><span class="ic">📈</span>Trend</button>
   <button data-view="profile"><span class="ic">☺</span>Profile</button>
@@ -395,12 +422,12 @@ function render(){
 }
 
 const CAT_LABEL = {study:'STUDY', python:'PYTHON'};
-function renderProgressRing(entry, exDone){
+function renderProgressRing(entry){
   const svg = document.getElementById('progressRing');
   if(!svg) return;
   const goalsDone = ['g1','g2','g3'].filter(g=>entry[g]).length;
-  const totalTasks = 4; // 3 goals + exercise
-  const doneTasks = goalsDone + (exDone?1:0);
+  const totalTasks = 3; // Now it's just the 3 goals
+  const doneTasks = goalsDone;
   const pct = entry.leave ? 100 : Math.round((doneTasks/totalTasks)*100);
   const r = 58, cx=70, cy=70;
   const circumference = 2*Math.PI*r;
@@ -444,13 +471,12 @@ function renderToday(){
   document.getElementById('leaveBtn').textContent = entry.leave?'Unmark':'Mark';
   document.getElementById('leaveBtn').onclick=async()=>{ entry.leave=!entry.leave; await saveLog(); render(); };
   const result=document.getElementById('dayResult');
-  const xpv=dayXp(entry) + (exDone?25:0);
+    const xpv=dayXp(entry);
   result.style.background = entry.leave?'rgba(111,156,232,0.1)':(xpv>0?'rgba(111,207,151,0.1)':'rgba(224,100,90,0.08)');
   result.innerHTML = entry.leave
     ? `<div class="big" style="color:var(--blue)">Free leave</div><div class="small">no penalty today</div>`
-    : `<div class="big" style="color:${xpv>0?'var(--green)':'var(--red)'}">${xpv>0?'+':''}${xpv} XP</div><div class="small">${['g1','g2','g3'].filter(g=>entry[g]).length} of 3 goals + ${exDone?'exercise':'no exercise'}</div>`;
+    : `<div class="big" style="color:${xpv>0?'var(--green)':'var(--red)'}">${xpv>0?'+':''}${xpv} XP</div><div class="small">${['g1','g2','g3'].filter(g=>entry[g]).length} of 3 goals</div>`;
 }
-
 let calDate=new Date();
 function renderCalendar(){
   const y=calDate.getFullYear(), m=calDate.getMonth();
@@ -833,6 +859,101 @@ Keep replies under 60 words. Be encouraging but honest — don't just praise eve
 }
 document.getElementById('chatSend').onclick = sendChat;
 document.getElementById('chatInput').addEventListener('keydown', e=>{ if(e.key==='Enter') sendChat(); });
+
+/* --- BREAK WHEEL LOGIC --- */
+let wheelTimerInterval;
+
+function spinWheel() {
+  const display = document.getElementById('wheelDisplay');
+  const btn = document.getElementById('spinBtn');
+  const timerDisplay = document.getElementById('timerDisplay');
+  
+  // Reset timer if running
+  clearInterval(wheelTimerInterval);
+  timerDisplay.style.display = 'none';
+  
+  btn.disabled = true;
+  btn.textContent = "SPINNING...";
+  
+  // Array of colors to flash during spin
+  const colors = ['w-2', 'w-3', 'w-4', 'w-5', 'w-7', 'w-10'];
+  let spinCount = 0;
+  const totalSpins = 15; // How many times it flashes before stopping
+  
+  display.className = 'wheel-display'; // Reset classes
+  
+  const spinInterval = setInterval(() => {
+    // Cycle through colors
+    display.className = 'wheel-display ' + colors[spinCount % colors.length];
+    display.textContent = "?";
+    spinCount++;
+    
+    // Stop spinning
+    if (spinCount >= totalSpins) {
+      clearInterval(spinInterval);
+      determineResult();
+    }
+  }, 100); // Flash every 100ms
+}
+
+function determineResult() {
+  const display = document.getElementById('wheelDisplay');
+  const btn = document.getElementById('spinBtn');
+  const timerDisplay = document.getElementById('timerDisplay');
+  
+  // Weighted Probability Logic (1 to 100)
+  const roll = Math.random() * 100 + 1;
+  let resultMins, resultColor;
+  
+  if (roll <= 10) { resultMins = 2; resultColor = 'w-2'; }       // 10% - Blue
+  else if (roll <= 40) { resultMins = 3; resultColor = 'w-3'; }  // 30% - Green
+  else if (roll <= 70) { resultMins = 4; resultColor = 'w-4'; }  // 30% - Yellow
+  else if (roll <= 88) { resultMins = 5; resultColor = 'w-5'; }  // 18% - Orange
+  else if (roll <= 97) { resultMins = 7; resultColor = 'w-7'; }  // 9% - Pink
+  else { resultMins = 10; resultColor = 'w-10'; }                // 3% - Purple
+  
+  // Set the final look
+  display.className = 'wheel-display ' + resultColor;
+  display.textContent = resultMins + "m";
+  
+  // Start the countdown
+  startBreakTimer(resultMins * 60); // Convert minutes to seconds
+  
+  btn.disabled = false;
+  btn.textContent = "SPIN AGAIN";
+}
+
+function startBreakTimer(totalSeconds) {
+  const timerDisplay = document.getElementById('timerDisplay');
+  timerDisplay.style.display = 'block';
+  
+  let timeLeft = totalSeconds;
+  
+  const updateDisplay = () => {
+    const mins = Math.floor(timeLeft / 60);
+    const secs = timeLeft % 60;
+    timerDisplay.textContent = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+  
+  updateDisplay(); // Show immediately
+  
+  wheelTimerInterval = setInterval(() => {
+    timeLeft--;
+    updateDisplay();
+    
+    if (timeLeft <= 0) {
+      clearInterval(wheelTimerInterval);
+      timerDisplay.textContent = "TIME'S UP!";
+      timerDisplay.style.color = "var(--red)";
+      
+      // Optional: Make the screen flash or play a sound here
+      setTimeout(() => {
+        timerDisplay.style.color = "var(--text)";
+      }, 2000);
+    }
+  }, 1000);
+}
+/* --- END BREAK WHEEL LOGIC --- */
 
 loadAll();
 </script>
