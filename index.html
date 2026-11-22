@@ -438,14 +438,6 @@ function renderToday(){
     row.appendChild(chk); row.appendChild(mid); row.appendChild(xp);
     rows.appendChild(row);
   });
-  // exercise as 4th row
-  const exDone = !!exLog[key];
-  renderProgressRing(entry, exDone);
-  const exRow = document.createElement('div');
-  exRow.className='goal-row'+(exDone?' done':'');
-  exRow.innerHTML = `<div class="check">${exDone?'✓':''}</div><div class="goal-mid"><span class="cat-tag cat-exercise">EXERCISE</span><div class="goal-name-input" style="padding-top:2px;">Today's workout</div></div><div class="goal-xp">+25xp</div>`;
-  exRow.onclick = async()=>{ exLog[key] = !exLog[key]; await saveExLog(); render(); };
-  rows.appendChild(exRow);
 
   const leaveBox=document.getElementById('leaveToggle');
   leaveBox.classList.toggle('active', !!entry.leave);
