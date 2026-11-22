@@ -159,12 +159,6 @@
     <div class="day-result" id="dayResult"></div>
   </div>
 
-  <!-- EXERCISE -->
-  <div class="view" id="view-exercise">
-    <h2 class="section-title">7-DAY EXERCISE PLAN — 4 EXERCISES/DAY</h2>
-    <div id="exerciseDays"></div>
-  </div>
-
   <!-- CALENDAR -->
   <div class="view" id="view-calendar">
     <div class="cal-header">
@@ -238,7 +232,6 @@
 
 <nav class="bottom">
   <button data-view="today" class="active"><span class="ic">✓</span>Today</button>
-  <button data-view="exercise"><span class="ic">🏋</span>Exercise</button>
   <button data-view="calendar"><span class="ic">▦</span>Calendar</button>
   <button data-view="trend"><span class="ic">📈</span>Trend</button>
   <button data-view="profile"><span class="ic">☺</span>Profile</button>
@@ -393,7 +386,6 @@ function render(){
     document.getElementById('streakVal').textContent = '🔥 ' + computeStreak();
     document.getElementById('weekXp').textContent = weekXpNow();
     renderToday();
-    renderExercisePlan();
     renderCalendar();
     renderTrend();
     renderProfile();
@@ -465,50 +457,6 @@ function renderToday(){
   result.innerHTML = entry.leave
     ? `<div class="big" style="color:var(--blue)">Free leave</div><div class="small">no penalty today</div>`
     : `<div class="big" style="color:${xpv>0?'var(--green)':'var(--red)'}">${xpv>0?'+':''}${xpv} XP</div><div class="small">${['g1','g2','g3'].filter(g=>entry[g]).length} of 3 goals + ${exDone?'exercise':'no exercise'}</div>`;
-}
-
-function renderExercisePlan(){
-  const wrap = document.getElementById('exerciseDays');
-  wrap.innerHTML='';
-  const shared=(title,list)=>{
-    const card=document.createElement('div'); card.className='day-card';
-    const head=document.createElement('div'); head.className='dhead';
-    head.innerHTML=`<div class="dname">${title}</div><div class="rest-pill">Same every training day</div>`;
-    card.appendChild(head);
-    list.forEach((ex,ei)=>{
-      const slot=document.createElement('div'); slot.className='ex-slot';
-      slot.innerHTML=`<input placeholder="Exercise ${ei+1}" value="${ex.name}"><input class="sets" placeholder="Sets" value="${ex.sets}">`;
-      const [nameInp,setsInp]=slot.querySelectorAll('input');
-      nameInp.onchange=async(e)=>{ ex.name=e.target.value; await saveWarmCool(); };
-      setsInp.onchange=async(e)=>{ ex.sets=e.target.value; await saveWarmCool(); };
-      card.appendChild(slot);
-    });
-    wrap.appendChild(card);
-  };
-  shared('WARM-UP', warmCool.warmup);
-  exPlan.forEach((d,di)=>{
-    const card=document.createElement('div'); card.className='day-card';
-    const head=document.createElement('div'); head.className='dhead';
-    head.innerHTML = `<div class="dname">${d.day}</div><label class="rest-pill"><input type="checkbox" ${d.rest?'checked':''}> Rest day</label>`;
-    head.querySelector('input').onchange = async(e)=>{ d.rest=e.target.checked; await saveExPlan(); renderExercisePlan(); };
-    card.appendChild(head);
-    if(!d.rest){
-      const block=(label,list,ph)=>{
-        const lab=document.createElement('div'); lab.className='ex-label'; lab.textContent=label; card.appendChild(lab);
-        list.forEach((ex,ei)=>{
-          const slot=document.createElement('div'); slot.className='ex-slot';
-          slot.innerHTML = `<input placeholder="${ph} ${ei+1}" value="${ex.name}"><input class="sets" placeholder="Sets" value="${ex.sets}">`;
-          const [nameInp,setsInp] = slot.querySelectorAll('input');
-          nameInp.onchange=async(e)=>{ ex.name=e.target.value; await saveExPlan(); };
-          setsInp.onchange=async(e)=>{ ex.sets=e.target.value; await saveExPlan(); };
-          card.appendChild(slot);
-        });
-      };
-      block('WORKOUT', d.exercises, 'Exercise');
-    }
-    wrap.appendChild(card);
-  });
-  shared('COOL-DOWN', warmCool.cooldown);
 }
 
 let calDate=new Date();
