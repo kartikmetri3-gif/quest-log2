@@ -465,6 +465,7 @@ function renderToday(){
     row.appendChild(chk); row.appendChild(mid); row.appendChild(xp);
     rows.appendChild(row);
   });
+  renderProgressRing(entry);
 
   const leaveBox=document.getElementById('leaveToggle');
   leaveBox.classList.toggle('active', !!entry.leave);
