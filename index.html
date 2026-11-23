@@ -207,6 +207,7 @@
     </div>
   </div>
   <div class="timer-display" id="timerDisplay">00:00</div>
+  <button class="spin-btn" id="skipBtn" onclick="skipTimer()" style="display: none; margin-top: 15px; background: var(--red); color: white;">SKIP BREAK</button>
 </div>
 
   <!-- CALENDAR -->
@@ -897,7 +898,7 @@ function spinWheel() {
   // Reset timer if running
   clearInterval(wheelTimerInterval);
   timerDisplay.style.display = 'none';
-  
+  document.getElementById('skipBtn').style.display = 'none';
   btn.disabled = true;
   
   // Weighted Probability Logic (1 to 100)
@@ -944,7 +945,7 @@ function spinWheel() {
 function startBreakTimer(totalSeconds) {
   const timerDisplay = document.getElementById('timerDisplay');
   timerDisplay.style.display = 'block';
-  
+  document.getElementById('skipBtn').style.display = 'block';
   let timeLeft = totalSeconds;
   
   const updateDisplay = () => {
@@ -966,6 +967,11 @@ function startBreakTimer(totalSeconds) {
       setTimeout(() => { timerDisplay.style.color = "var(--text)"; }, 2000);
     }
   }, 1000);
+}
+  function skipTimer() {
+  clearInterval(wheelTimerInterval);
+  document.getElementById('timerDisplay').style.display = 'none';
+  document.getElementById('skipBtn').style.display = 'none';
 }
 /* --- END BREAK WHEEL LOGIC --- */
 
